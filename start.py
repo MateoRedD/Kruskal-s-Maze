@@ -2,236 +2,243 @@ import random
 from collections import deque
 import heapq
 
-filas = 15
-columnas = 15
-total_celdas = filas * columnas
+rows = 15
+cols = 15
+total_cells = rows * cols
 
-def indice(fila, columna, num_columnas):
-    return (fila * num_columnas) + columna
+def index(row, col, num_cols):
+    return (row * num_cols) + col
 
-class pared:
-    def __init__(self, celda_a, celda_b):
-        self.celda_a = celda_a
-        self.celda_b = celda_b
+class Wall:
+    def __init__(self, cell_a, cell_b):
+        self.cell_a = cell_a
+        self.cell_b = cell_b
 
-paredes = []
-for fila in range(filas):
-    for columna in range(columnas):
-        actual = indice(fila, columna, columnas)
+walls = []
+for row in range(rows):
+    for col in range(cols):
+        current = index(row, col, cols)
 
-        if columna < columnas - 1:
-            vecino_derecha = indice(fila, columna + 1, columnas)
-            paredes.append(pared(actual, vecino_derecha))
+        if col < cols - 1:
+         right_neighbor = index(row, col + 1, cols)
+         walls.append(Wall(current, right_neighbor))
 
-        if fila < filas - 1:
-            vecino_abajo = indice(fila + 1, columna, columnas)
-            paredes.append(pared(actual, vecino_abajo))
+        if row < rows - 1:
+         down_neighbor = index(row + 1, col, cols)
+         walls.append(Wall(current,down_neighbor))
+
+print("candidatas generadas:", len(walls))
 
 class UnionFind:
     def __init__(self, n):
-        self.padres = list(range(n))
+        self.parents = list(range(n))
 
     def find(self, x):
-        if self.padres[x] == x:
+        if self.parents[x] == x:
             return x
-        self.padres[x] = self.find(self.padres[x])
-        return self.padres[x]
+        self.parents[x] = self.find(self.parents[x])
+        return self.parents[x]
     
     def union(self, x, y):
-        raiz_x = self.find(x)
-        raiz_y = self.find(y)
-        if raiz_x != raiz_y:
-            self.padres[raiz_x] = raiz_y
+        root_x = self.find(x)
+        root_y = self.find(y)
+        if root_x != root_y:
+            self.parents[root_x] = root_y      
 
-uf = UnionFind(total_celdas)
-random.shuffle(paredes)
+uf = UnionFind(total_cells)
+random.shuffle(walls)
 maze = []
 
-for pared in paredes:
-    if uf.find(pared.celda_a) != uf.find(pared.celda_b):
-        uf.union(pared.celda_a, pared.celda_b)
-        maze.append(pared)
+for wall in walls:
+    if uf.find(wall.cell_a) != uf.find(wall.cell_b):
+        uf.union(wall.cell_a, wall.cell_b)
+        maze.append(wall)
 
-print("aristas:", len(maze), "esperado:", total_celdas - 1)
+print("edges:", len(maze), "expected:", total_cells -1)
 
-def verificar_conectividad(maze, total_celdas):
-    adyacencia = {i: [] for i in range(total_celdas)}
-    for pared in maze:
-        adyacencia[pared.celda_a].append(pared.celda_b)
-        adyacencia[pared.celda_b].append(pared.celda_a)
+def check_connectivity(maze, total_cells):
+    adjacency = {i: [] for i in range(total_cells)}
+    for wall in maze:
+        adjacency[wall.cell_a].append(wall.cell_b)
+        adjacency[wall.cell_b].append(wall.cell_a)
 
-    visitados = set()
-    pila = [0]
-    while pila:
-        actual = pila.pop()
-        if actual not in visitados:
-            visitados.add(actual)
-            for vecino in adyacencia[actual]:
-                if vecino not in visitados:
-                    pila.append(vecino)
-    return len(visitados) == total_celdas
+    visited = set()
+    stack = [0]
+    while stack:
+        current = stack.pop()
+        if current not in visited:
+            visited.add(current)
+            for neighbor in adjacency[current]:
+                if neighbor not in visited:
+                    stack.append(neighbor)
+    return len(visited) == total_cells
 
-print("conectado:", verificar_conectividad(maze, total_celdas))
+print("connected:", check_connectivity(maze, total_cells))
 
-def imprimir_maze(maze, filas, columnas, inicio=None, meta=None):
-    conectados = set()
-    for pared in maze:
-        conectados.add((pared.celda_a, pared.celda_b))
-        conectados.add((pared.celda_b, pared.celda_a))
-    
-    pared_char = "▉" #■ #▉
-    print(pared_char * (columnas * 2 + 1))
+def print_maze(maze, rows, cols, start=None, goal=None):
+    connected = set()
+    for wall in maze:
+        connected.add((wall.cell_a, wall.cell_b))
+        connected.add((wall.cell_b, wall.cell_a))
 
-    for fila in range(filas):
-        fila_str = pared_char
-        for columna in range(columnas):
-            actual = indice(fila, columna, columnas)
-            if actual == inicio:
-                fila_str += "A"
-            elif actual == meta:
-                fila_str += "B"
+    wall_char = "█" #█ #■ 
+    print(wall_char * (cols * 2 + 1))
+
+    for row in range(rows):
+        row_str = wall_char
+        for col in range(cols):
+            current = index(row, col, cols)
+            if current == start:
+                row_str += "A"
+            elif current == goal:
+                row_str += "B"
             else:
-                fila_str += " "
+                row_str += " "
             
-            if columna < columnas - 1:
-                vecino = indice(fila, columna + 1, columnas)
-                fila_str += " " if (actual, vecino) in conectados else pared_char
+            if col < cols - 1:
+                neighbor = index(row, col + 1, cols)
+                row_str += " " if (current, neighbor) in connected else wall_char
             else:
-                fila_str += pared_char
-        print(fila_str)
+                row_str += wall_char
+        print(row_str)
 
-        piso_str = pared_char
-        for columna in range(columnas):
-            actual = indice(fila, columna, columnas)
-            if fila < filas - 1:
-                vecino = indice(fila + 1, columna, columnas)
-                piso_str += " " if (actual, vecino) in conectados else pared_char
+        floor_str = wall_char
+        for col in range(cols):
+            current = index(row, col, cols)
+            if row < rows - 1:
+                neighbor = index(row + 1, col, cols)
+                floor_str += " " if (current, neighbor) in connected else wall_char
             else:
-                piso_str += pared_char
-            piso_str += pared_char
-        print(piso_str)
+                floor_str += wall_char
+            floor_str += wall_char
+        print(floor_str)
 
-imprimir_maze(maze, filas, columnas, inicio=indice(0, 0, columnas), meta=indice(filas - 1, columnas - 1, columnas))
+print_maze(maze, rows, cols, start=index(0, 0, cols), goal=index(rows - 1, cols - 1, cols))
 
-def resolver_bfs(maze, inicio, meta, total_celdas):
-    adyacencia = {i: [] for i in range(total_celdas)}
-    for pared in maze:
-        adyacencia[pared.celda_a].append(pared.celda_b)
-        adyacencia[pared.celda_b].append(pared.celda_a)
+def solve_bfs(maze, start, goal, total_cells):
+    adjacency = {i: [] for i in range(total_cells)}
+    for wall in maze:
+        adjacency[wall.cell_a].append(wall.cell_b)
+        adjacency[wall.cell_b].append(wall.cell_a)
 
-    visitados = {inicio}
-    padres = {inicio: None}
-    cola = deque([inicio])
-    nodos_expandidos = 0
+    visited = {start}
+    parents = {start: None}
+    queue = deque([start])
+    expanded_nodes = 0
 
-    while cola:
-        actual = cola.popleft()
-        nodos_expandidos += 1
+    while queue:
+        current = queue.popleft()
+        expanded_nodes += 1
 
-        if actual == meta:
+        if current == goal:
             break
 
-        for vecino in adyacencia[actual]:
-            if vecino not in visitados:
-                visitados.add(vecino)
-                padres[vecino] = actual
-                cola.append(vecino)
+        for neighbor in adjacency[current]:
+            if neighbor not in visited:
+                visited.add(neighbor)
+                parents[neighbor] = current
+                queue.append(neighbor)
 
-    camino = []
-    nodo = meta
-    while nodo is not None:
-        camino.append(nodo)
-        nodo = padres.get(nodo)
-    camino.reverse()
+    path = []
+    node = goal
+    while node is not None:
+        path.append(node)
+        node = parents.get(node)
+    path.reverse()
 
-    return camino, nodos_expandidos
-inicio = indice(0 , 0, columnas)
-meta = indice(filas - 1, columna - 1, columnas)
-camino, nodos = resolver_bfs(maze, inicio, meta, total_celdas)
-print("largo del camino:", len(camino))
-print("nodos expandidos", nodos)
+    return path, expanded_nodes
+start = index(0, 0, cols)
+goal = index(rows - 1, cols - 1, cols)
+path, nodes = solve_bfs(maze, start, goal, total_cells)
+print("path length:", len(path))
+print("expanded nodes:", nodes)
 
-def heuristica(a, b, columnas):
-    fila_a, col_a = divmod(a , columnas)
-    fila_b, col_b = divmod(b, columnas)
-    return abs(fila_a - fila_b) + abs(total_celdas)
+def heuristic(a, b, cols):
+    row_a, col_a = divmod(a, cols)
+    row_b, col_b = divmod(b, cols)
+    return abs(row_a - row_b) + abs(col_a - col_b)
 
-def resolver_astar(maze, inicio, meta, total_celdas, columnas):
-    adyacencia = {i: [] for i in range(total_celdas)}
-    for pared in maze:
-        adyacencia[pared.celda_a].append(pared.celda_b)
-        adyacencia[pared.celda_b].append(pared.celda_a)
-    
-    g_score = {inicio: 0}
-    padres = {inicio: None}
-    contador = 0
-    heap = [(heuristica(inicio, meta, columnas), contador, inicio)]
-    visitados = set()
-    nodos_expandidos = 0
+def solve_astar(maze, start, goal, total_cells, cols):
+    adjacency = {i: [] for i in range(total_cells)}
+    for wall in maze:
+        adjacency[wall.cell_a].append(wall.cell_b)
+        adjacency[wall.cell_b].append(wall.cell_a)
+
+    g_score = {start: 0}
+    parents = {start: None}
+    counter = 0
+    heap = [(heuristic(start, goal, cols), counter, start)]
+    visited = set()
+    expanded_nodes = 0
+
+
     while heap:
-        f, _, actual = heapq.heappop(heap)
+        f, _, current = heapq.heappop(heap)
 
-        if actual in visitados:
+        if current in visited:
             continue
-        visitados.add(actual)
-        nodos_expandidos += 1
+        visited.add(current)
+        expanded_nodes += 1
 
-        if actual == meta:
+        if current == goal:
             break
 
-        for vecino in adyacencia[actual]:
-            nuevo_g = g_score[actual] + 1
-            if vecino not in g_score or nuevo_g < g_score[vecino]:
-                g_score[vecino] = nuevo_g
-                padres[vecino] = actual
-                f_vecino = nuevo_g + heuristica(vecino, meta, columnas)
-                contador += 1
-                heapq.heappush(heap, (f_vecino, contador, vecino))
-    camino = []
-    nodo = meta
-    while nodo is not None:
-        camino.append(nodo)
-        nodo = padres.get(nodo)
-    camino.reverse()
+        for neighbor in adjacency[current]:
+            new_g = g_score[current] + 1
+            if neighbor not in g_score or new_g < g_score[neighbor]:
+                g_score[neighbor] = new_g
+                parents[neighbor] = current
+                f_neighbor = new_g + heuristic(neighbor, goal, cols)
+                counter += 1
+                heapq.heappush(heap, (f_neighbor, counter, neighbor))
 
-    return camino, nodos_expandidos
-camino_astar, nodo_astar = resolver_astar(maze, inicio, meta, total_celdas, columnas)
-print("largo del camino:", len(camino_astar))
-print("nodos expandidos:", nodo_astar)
+    path = []
+    node = goal
+    while node is not None:
+        path.append(node)
+        node = parents.get(node)
+    path.reverse()
 
-def generar_maze(filas, columnas):
-    total = filas * columnas
-    paredes = []
-    for fila in range (filas):
-        for columna in range(columnas):
-            actual = indice(fila, columna, columnas)
-            if columna < columnas - 1:
-                paredes.append(pared(actual, indice(fila, columna + 1, columnas)))
-            if fila < filas - 1:
-                paredes.append(pared(actual, indice(fila + 1, columna, columnas)))
-            
+    return path, expanded_nodes
+
+path_astar, nodes_astar = solve_astar(maze, start, goal, total_cells, cols)
+print("path length:", len(path_astar))
+print("expanded nodes:", nodes_astar)
+
+def generate_maze(rows,cols):
+    total = rows * cols
+    walls = []
+    for row in range(rows):
+        for col in range(cols):
+            current = index(row, col, cols)
+            if col < cols - 1:
+                walls.append(Wall(current, index(row, col + 1, cols)))
+            if row < rows - 1:
+                walls.append(Wall(current, index(row + 1, col, cols)))
+    
     uf = UnionFind(total)
-    random.shuffle(paredes)
-    maze_generado = []
-    for p in paredes:
-        if uf.find(pared.celda_a) != uf.find(pared.celda_b):
-            uf.union(pared.celda_a, pared.celda_b)
-            maze_generado.append(pared)
-            return maze_generado
-
+    random.shuffle(walls)
+    generated_maze = []
+    for w in walls:
+        if uf.find(w.cell_a) != uf.find(w.cell_b):
+            uf.union(w.cell_a, w.cell_b)
+            generated_maze.append(w)
+    return generated_maze
 N_TRIALS = 30
-reducciones = []
+reductions = []
 for _ in range(N_TRIALS):
-    maze_prueba = generar_maze(filas, columnas)
-    inicio = indice(0, 0, columnas)
-    meta = indice(filas - 1, columnas - 1, columnas)
-    _, nodos_bfs = resolver_bfs(maze_prueba, inicio, meta, total_celdas)
-    _, nodo_astar = resolver_astar(maze_prueba, inicio, meta, total_celdas, columnas)
+    test_maze = generate_maze(rows, cols)
+    start_t = index(0, 0, cols)
+    goal_t = index(rows - 1, cols - 1, cols)
+    _, nodes_bfs = solve_bfs(test_maze, start_t, goal_t, total_cells)
+    _, nodes_astar_t = solve_astar(test_maze, start_t, goal_t, total_cells, cols)
 
-    reduccion = (nodos_bfs - nodo_astar) / nodos_bfs * 100
-    reducciones.append(reduccion)
+    reduction = (nodes_bfs - nodes_astar_t) / nodes_bfs * 100
+    reductions.append(reduction)
+average = sum(reductions) / len(reductions)
+print(f"average A* reduction over BFS: {average:.1f}%")
+print(f"min: {min(reductions):.1f}% Max: {max(reductions):.1f}%" )
+print("connected:", check_connectivity(maze, total_cells))
 
-promedio = sum(reducciones) / len(reducciones)
-print(f"reduccion promedio de A* sobre BFS: {promedio:.1f}%")
-print(f"Minimo: {min(reducciones):.1f}% Maximo: {max(reducciones):.1f}%")
+
 
