@@ -6,7 +6,7 @@ import heapq
 from start import generate_maze, index, rows, cols, total_cells
 
 CELL_SIZE = 30
-MARGIN_TOP = 60
+MARGIN_TOP = 70
 WIDTH = cols * CELL_SIZE
 HEIGHT = rows * CELL_SIZE + MARGIN_TOP
 
@@ -18,8 +18,13 @@ COLOR_BFS_VISITED = (174 , 214, 241)
 COLOR_ASTAR_VISITED = (250, 215, 160)
 COLOR_PATH = (241, 196, 15)
 COLOR_TEXT = (20, 20, 20)
+COLOR_DIVIDER = (210, 210, 210)
 
-def cell_react(row, col):
+CONTROLS_TEXT = "SPACE = BFS  A = A* R = new maze"
+VISITED_INSET = 9
+PATH_WIDTH = 5
+
+def cell_rect(row, col):
     return pygame.Rect(col * CELL_SIZE, MARGIN_TOP + row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
 def draw_maze(screen, maze):
@@ -46,6 +51,22 @@ def draw_maze(screen, maze):
             bottom_neighbor = index(row + 1, col, cols) if row < rows - 1 else None
             if bottom_neighbor is None or (current, bottom_neighbor) not in connected:
                 pygame.draw.line(screen, COLOR_WALL, (x , y + CELL_SIZE), (x + CELL_SIZE, y + CELL_SIZE), 3)
+
+def draw_visited(screen, visited_cells):
+    for cell, color in visited_cells.items():
+        row, col = divmod(cell, cols)
+        rect = cell_rect(row, col)
+        inset_rect = rect.inflate(-VISITED_INSET * 2, -VISITED_INSET * 2)
+        pygame.draw.rect(screen, color, inset_rect, border_radius=3)
+
+def draw_path(screen, final_path):
+    if len(final_path) < 2:
+        return
+    points = []
+    for cell in final_path:
+        row, col = divmod(cell, cols)
+        points.append(cell_rect(row, col).center)
+    pygame.draw.lines(screen, COLOR_PATH, False, points, PATH_WIDTH)
 
 def solve_bfs_animated(maze, start, goal, total_cells):
     adjacency = {i: [] for i in range (total_cells)}
@@ -75,7 +96,6 @@ def solve_bfs_animated(maze, start, goal, total_cells):
     node = goal
     while node is not None:
         path.append(node)
-
         node = parents.get(node)
     path.reverse()
     yield ("done", path)
@@ -116,15 +136,6 @@ def solve_astar_animated(maze, start, goal, total_cells, cols):
                 f_neighbor = new_g + heuristic(neighbor, goal, cols)
                 counter +=1
                 heapq.heappush(heap, (f_neighbor, counter, neighbor))
-
-    for neighbor in adjacency[current]:
-        new_g = g_score[current] + 1
-        if neighbor not in g_score or new_g < g_score[neighbor]:
-            g_score[neighbor] = new_g
-            parents[neighbor] = current
-            f_neighbor = new_g + heuristic(neighbor, goal, cols)
-            counter += 1
-            heapq.heappush(heap, (f_neighbor, counter, neighbor))
     
     path = []
     node = goal
@@ -150,7 +161,7 @@ def main():
     active_gen = None
     active_algo = ""
     expanded_count = 0
-    status_text = "SPACE = BFS  A = A*  R = new maze"
+    result_text = ""
 
     running = True
     while running:
@@ -163,19 +174,21 @@ def main():
                     visited_cells = {}
                     final_path = []
                     active_gen = None
-                    status_text =  "SPACE = BFS  A = A*  R = new maze"
+                    result_text = ""
                 elif event.key == pygame.K_SPACE:
                     visited_cells = {}
                     final_path = []
                     active_gen = solve_bfs_animated(maze, start, goal, total_cells)
                     active_algo = "BFS"
                     expanded_count = 0
+                    result_text = ""
                 elif event.key == pygame.K_a:
                     visited_cells = {}
                     final_path = []
                     active_gen = solve_astar_animated(maze, start, goal, total_cells, cols)
                     active_algo = "A*"
                     expanded_count = 0
+                    result_text = ""
         if active_gen is not None:
             for _ in range(3):
                 try:
@@ -195,19 +208,23 @@ def main():
 
         screen.fill(COLOR_BG)
 
-        text_surface = font.render(status_text, True, COLOR_TEXT)
-        screen.blit(text_surface, (10, 15))
+        controls_surface = font.render(CONTROLS_TEXT, True, COLOR_TEXT)
+        screen.blit(controls_surface, (10, 12))
 
-        for cell, color in visited_cells.items():
-            row, col = divmod(cell, cols)
-            pygame.draw.rect(screen, COLOR_PATH, cell_react(row, col))
+        if result_text:
+            result_surface = font.render(result_text, True, COLOR_TEXT)
+            screen.blit(result_surface, (10, 38))
+        
+        pygame.draw.line(screen, COLOR_DIVIDER, (0, MARGIN_TOP - 1), (WIDTH, MARGIN_TOP -1), 1)
 
+        draw_visited(screen, visited_cells)
+        draw_path(screen, final_path)
         draw_maze(screen, maze)
 
         start_row, start_col = divmod(start, cols)
         goal_row, goal_col = divmod(goal, cols)
-        pygame.draw.rect(screen, COLOR_START, cell_react(start_row, start_col))
-        pygame.draw.rect(screen, COLOR_GOAL, cell_react(goal_row, goal_col))
+        pygame.draw.rect(screen, COLOR_START, cell_rect(start_row, start_col))
+        pygame.draw.rect(screen, COLOR_GOAL, cell_rect(goal_row, goal_col))
 
         pygame.display.flip()
         clock.tick(60)
